@@ -1,0 +1,97 @@
+# .gitignore genérico para proyecto con .NET backend y Astro (Node) frontend
+# Mantén archivos de configuración que quieras versionar (por ejemplo: package-lock.json si lo deseas)
+
+# ---- Sistema operativo ----
+.DS_Store
+Thumbs.db
+
+# ---- Entornos / variables de entorno ----
+# Archivos .env y variantes de entorno locales
+.env
+.env.*.local
+.env.local
+.env.*
+
+# ---- Node / Astro (frontend) ----
+node_modules/
+# Build de Astro/Node
+/dist/
+/build/
+.out/
+.cache/
+.astro/
+public/_astro/
+# Logs y caches de Node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+# (Opcional: mantener lockfile. Si prefieres, borra la línea anterior)
+
+# ---- .NET / C# (backend) ----
+# Carpetas de compilación y artefactos
+**/bin/
+**/obj/
+**/publish/
+# Visual Studio / Rider / JetBrains
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sln.ide
+# Temporal / cachés y artefactos de test
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.vspscc
+*.vssscc
+
+# NuGet
+*.nupkg
+**/packages/
+.nuget/
+
+# Archivos de ejecución / binarios generados
+*.exe
+*.dll
+*.pdb
+*.cache
+
+# ---- IDE / Editor ----
+# Editor de VSCode (settings local y workspace)
+.vscode/*
+# JetBrains
+.idea/
+# Editor swap/backup
+*~
+*.swp
+
+# ---- Logs / reports / temp ----
+logs/
+*.log
+*.out
+*.pid
+*.seed
+coverage/
+
+# ---- Docker / contenedores ----
+.env
+docker-compose.override.yml
+.gitpod/
+
+# ---- Misc ----
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+
+# ---- Archivos específicos del proyecto ----
+# Si prefieres ignorar appsettings de desarrollo que incluyen secretos, descomenta la línea siguiente
+# appsettings.Development.json
+
+# Nota: si ya has versionado archivos que ahora aparecen en este .gitignore, usa "git rm --cached <archivo>" para eliminarlos del índice de git sin borrarlos localmente.
