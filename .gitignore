@@ -1,97 +1,80 @@
-# .gitignore genérico para proyecto con .NET backend y Astro (Node) frontend
-# Mantén archivos de configuración que quieras versionar (por ejemplo: package-lock.json si lo deseas)
-
-# ---- Sistema operativo ----
+# ========================
+# 1. SISTEMA OPERATIVO Y LOGS
+# ========================
 .DS_Store
 Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.bak
 
-# ---- Entornos / variables de entorno ----
-# Archivos .env y variantes de entorno locales
+# ========================
+# 2. VARIABLES DE ENTORNO (CRÍTICO 🔒)
+# ========================
+# Ignora todos los archivos .env
 .env
-.env.*.local
-.env.local
 .env.*
+# EXCEPTO los de ejemplo (útil para documentación)
+!.env.example
+!.env.template
 
-# ---- Node / Astro (frontend) ----
+# ========================
+# 3. FRONTEND (Astro / React / Node)
+# ========================
 node_modules/
-# Build de Astro/Node
-/dist/
-/build/
-.out/
-.cache/
+# Carpetas de build de Astro
+dist/
+.output/
 .astro/
-public/_astro/
-# Logs y caches de Node
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-package-lock.json
-# (Opcional: mantener lockfile. Si prefieres, borra la línea anterior)
+# Caches
+.cache/
+.npm/
 
-# ---- .NET / C# (backend) ----
-# Carpetas de compilación y artefactos
+# NOTA: package-lock.json NO se ignora, se debe subir para asegurar versiones.
+
+# ========================
+# 4. BACKEND (.NET / C#)
+# ========================
+# Carpetas de compilación binaria
 **/bin/
 **/obj/
+# Carpetas de publicación
 **/publish/
-# Visual Studio / Rider / JetBrains
-.vs/
-.vscode/
-.idea/
+
+# Archivos específicos de usuario o IDE
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
-*.sln.ide
-# Temporal / cachés y artefactos de test
-TestResults/
-coverage/
-*.coverage
-*.coveragexml
-*.vspscc
-*.vssscc
 
-# NuGet
-*.nupkg
-**/packages/
-.nuget/
+# ========================
+# 5. CONFIGURACIÓN .NET (SEGURIDAD EXTRA)
+# ========================
+# Aunque uses User Secrets, ignoramos el Development.json por seguridad (Safety Net)
+**/appsettings.Development.json
+**/appsettings.Production.json
+# El appsettings.json base SÍ se sube (debe tener solo estructura, sin claves)
 
-# Archivos de ejecución / binarios generados
-*.exe
-*.dll
-*.pdb
-*.cache
+# ========================
+# 6. DATOS Y SCRIPTS LOCALES
+# ========================
+# Archivos generados por tus pruebas de scraping
+cookies.txt
+page.html
+resultado_login.html
+# Datos de MongoDB si decides montarlos en local
+mongo_data/
+data/db/
 
-# ---- IDE / Editor ----
-# Editor de VSCode (settings local y workspace)
+# ========================
+# 7. IDE (VS Code / Rider)
+# ========================
+# Ignora configuraciones personales de VS Code
 .vscode/*
+# PERO permite subir las configuraciones de depuración y tareas compartidas
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
 # JetBrains
 .idea/
-# Editor swap/backup
-*~
-*.swp
-
-# ---- Logs / reports / temp ----
-logs/
-*.log
-*.out
-*.pid
-*.seed
-coverage/
-
-# ---- Docker / contenedores ----
-.env
-docker-compose.override.yml
-.gitpod/
-
-# ---- Misc ----
-.DS_Store
-Thumbs.db
-*.bak
-*.tmp
-
-# ---- Archivos específicos del proyecto ----
-# Si prefieres ignorar appsettings de desarrollo que incluyen secretos, descomenta la línea siguiente
-# appsettings.Development.json
-
-# Nota: si ya has versionado archivos que ahora aparecen en este .gitignore, usa "git rm --cached <archivo>" para eliminarlos del índice de git sin borrarlos localmente.
