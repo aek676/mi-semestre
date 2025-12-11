@@ -3,9 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import ProductList from "../components/ProductList.astro";
 import { Api } from "../lib/api";
 
-// Fetch the products from the backend API during SSR
-
-const api = new Api({ baseUrl: "http://localhost:5042" });
+const api = new Api({ baseUrl: import.meta.env.PUBLIC_API_BASE_URL });
 
 const response = await api.api.productsList();
 ---
