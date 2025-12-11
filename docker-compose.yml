@@ -20,5 +20,18 @@ services:
     depends_on:
       - mongo
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend_app
+    restart: always
+    ports:
+      - "4321:4321"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - mongo
+
 volumes:
   mongo_data:

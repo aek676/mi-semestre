@@ -11,6 +11,7 @@
     "gen:api": "bunx swagger-typescript-api generate -p http://localhost:5042/swagger/v1/swagger.json -o src/lib/ -n api.ts"
   },
   "dependencies": {
+    "@astrojs/node": "^9.5.1",
     "@astrojs/react": "^4.4.2",
     "@tailwindcss/vite": "^4.1.17",
     "@types/react": "^19.2.7",

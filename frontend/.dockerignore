@@ -1,0 +1,39 @@
+.env*
+dist
+
+# Node dependencies
+node_modules
+
+# Build outputs
+build
+dist
+
+# Caches
+.cache
+.parcel-cache
+.turbo
+.pnpm-store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.log
+
+# OS / editor files
+.DS_Store
+.vscode
+.idea
+
+# Environment files
+.env.local
+.env.*.local
+
+# Coverage and packages
+coverage
+*.tgz
+
+# Framework artifacts
+.next
+.svelte-kit
+.astro
