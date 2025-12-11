@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -7,7 +8,8 @@ namespace backend.Models
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
+        [Required]
+        public string Id { get; set; } = default!;
         public string Name { get; set; }
         public double Price { get; set; }
         public int Quantity { get; set; }
