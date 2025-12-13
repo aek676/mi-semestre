@@ -16,7 +16,10 @@ on:
     ## RECOMMENDED: Specify to only run this workflow file when terraform configuration has changed.
     paths:
       - "terraform/**.tf" ## Example: 'terraform/**.tf'
-
+      
+permissions:
+  contents: read
+  pull-requests: write
 ## Add shared Environment Variables across jobs here ##
 env:
   TF_CLOUD_ORGANIZATION: "${{ vars.TF_CLOUD_ORGANIZATION }}" ## Name of your existing HCP Terraform Organization. RECOMMENDED: use repository variables. ex. "${{ vars.TF_CLOUD_ORGANIZATION }}"
