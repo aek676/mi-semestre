@@ -1,44 +1,63 @@
-name: "Terraform Apply"
+# This template is pre-configured to create an applyable run in HCP Terraform.
+# If the plan phase is successful, the run will be applied for the specified workspace.
+#
+# This workflow is configured to trigger when a push against your `main` branch occurs,
+# **IF** the set paths contain files that have changed.
+#
+---
+name: HCP Terraform Apply Run
 
 on:
   push:
     branches:
+      ## RECOMMENDED: Change for your target branch, or include branches you wish to trigger this workflow file.
       - main
+    ## RECOMMENDED: Specify to only run this workflow file when terraform configuration has changed.
+    paths:
+      - terraform/**.tf ## Example: 'terraform/**.tf'
 
+## RECOMMENDED: Limit apply runs job / workflow to a single concurrency group at a time.
+## link: https://docs.github.com/en/actions/using-jobs/using-concurrency
+## Example:
+# concurrency: production
+
+## Add shared Environment Variables across jobs here ##
 env:
-  TF_CLOUD_ORGANIZATION: "mi-cuatri"
-  TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}"
-  TF_WORKSPACE: "mi-cuatri"
-  CONFIG_DIRECTORY: "./terraform"
+  TF_CLOUD_ORGANIZATION: "${{ vars.TF_CLOUD_ORGANIZATION }}" ## Name of your existing HCP Terraform Organization. RECOMMENDED: use repository variables. ex. "${{ vars.TF_CLOUD_ORGANIZATION }}"
+  TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}" ## HCP Terraform API Token. RECOMMENDED: replace with github action secrets. ex. "${{ secrets.TF_API_TOKEN }}"
+  TF_WORKSPACE: "mi-cuatri" ## Name of your existing workspace in HCP Terraform.
+  CONFIG_DIRECTORY: "terraform" ## Directory of your Terraform Configuration. Relative to the project root.
+  ## Additional env variables
+  TF_LOG: DEBUG ## Helpful for troubleshooting
+  # TF_MAX_TIMEOUT: "30m" ## If you wish to override the default "1h"
 
 jobs:
-  terraform:
-    name: "Terraform Apply"
+  terraform-cloud-apply-run:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    environment:
+      name: production
+    ## OPTIONAL: can scope variables to this specific job
+    ## Example:
+    # env:
+    #  TF_CLOUD_ORGANIZATION: ${{ secrets.TF_CLOUD_ORG }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Upload Configuration
-        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
-        id: apply-upload
+      - uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.2
+        id: upload
         with:
           workspace: ${{ env.TF_WORKSPACE }}
           directory: ${{ env.CONFIG_DIRECTORY }}
 
-      - name: Create Apply Run
-        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
-        id: apply-run
+      - uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.2
+        id: create-run
         with:
           workspace: ${{ env.TF_WORKSPACE }}
-          configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+          configuration_version: ${{ steps.upload.outputs.configuration_version_id }}
 
-      - name: Apply
-        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
-        if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
+      - uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.2
         id: apply
+        if: ${{ fromJSON(steps.create-run.outputs.payload).data.attributes.actions.IsConfirmable }}
         with:
-          run: ${{ steps.apply-run.outputs.run_id }}
+          run: ${{ steps.create-run.outputs.run_id }}
           comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
