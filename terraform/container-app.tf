@@ -17,11 +17,6 @@ resource "azurerm_container_app" "micuatriapp" {
   resource_group_name          = azurerm_resource_group.mi-cuatri.name
   revision_mode                = "Single"
 
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.aca_identity.id]
-  }
-
   template {
     container {
       name   = "mi-instancia"
