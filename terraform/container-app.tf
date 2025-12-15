@@ -30,8 +30,8 @@ resource "azurerm_container_app" "micuatriapp" {
 
   template {
     container {
-      name   = "mi-instancia"
-      image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+      name   = "mi-cuatri-frontend"
+      image  = "aek676/mi-cuatri-frontend:latest"
       cpu    = 0.25
       memory = "0.5Gi"
     }
@@ -45,5 +45,11 @@ resource "azurerm_container_app" "micuatriapp" {
       percentage      = 100
       latest_revision = true
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image
+    ]
   }
 }
