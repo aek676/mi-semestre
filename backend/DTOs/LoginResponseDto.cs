@@ -1,10 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace backend.Dtos
 {
     public class LoginResponseDto
     {
         public bool IsSuccess { get; set; }
-        public string Message { get; set; }
-        public string SessionCookie { get; set; }
-        public object UserData { get; set; }
+        [Required(ErrorMessage = "Message is required")]
+        public required string Message { get; set; } = string.Empty;
+        public string SessionCookie { get; set; } = string.Empty;
+        public UserDetailDto UserData { get; set; } = new UserDetailDto();
     }
 }

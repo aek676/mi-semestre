@@ -122,12 +122,28 @@ namespace backend.Services
                     var jsonApi = await responseApi.Content.ReadAsStringAsync();
                     try
                     {
-                        var userDataObj = JsonSerializer.Deserialize<object>(jsonApi);
-                        return new UserResponseDto { IsSuccess = true, Message = "OK", UserData = userDataObj };
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var userDataObj = JsonSerializer.Deserialize<UserDetailDto>(jsonApi, options);
+
+                        return new UserResponseDto
+                        {
+                            IsSuccess = true,
+                            Message = "OK",
+                            UserData = userDataObj!
+                        };
                     }
-                    catch
+                    catch (JsonException)
                     {
-                        return new UserResponseDto { IsSuccess = true, Message = "OK", UserData = jsonApi };
+                        return new UserResponseDto
+                        {
+                            IsSuccess = false,
+                            Message = "Error procesando la respuesta de Blackboard",
+                            UserData = null
+                        };
                     }
                 }
                 else

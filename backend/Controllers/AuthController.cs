@@ -16,13 +16,11 @@ namespace backend.Controllers
         }
 
         [HttpPost("login-ual")]
-        public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
+        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request)
         {
-            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
-            {
-                return BadRequest("Usuario y contraseña requeridos.");
-            }
-
             var result = await _blackboardService.AuthenticateAsync(request.Username, request.Password);
 
             if (result.IsSuccess)
@@ -36,13 +34,13 @@ namespace backend.Controllers
         }
 
         [HttpGet("me")]
-        public async Task<IActionResult> Me([FromHeader(Name = "X-Session-Cookie")] string sessionCookieHeader)
+        [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<UserResponseDto>> Me([FromHeader(Name = "X-Session-Cookie")] string? sessionCookieHeader)
         {
             var cookie = sessionCookieHeader;
-            if (string.IsNullOrEmpty(cookie))
+            if (string.IsNullOrEmpty(cookie) && Request.Headers.TryGetValue("Cookie", out var cookieHeaderValue))
             {
-                if (Request.Headers.TryGetValue("Cookie", out var cookieHeaderValue))
-                    cookie = cookieHeaderValue.ToString();
+                cookie = cookieHeaderValue.ToString();
             }
 
             if (string.IsNullOrEmpty(cookie))
