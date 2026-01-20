@@ -18,6 +18,11 @@ export interface CreateProductDto {
   quantity?: number;
 }
 
+export interface LoginRequestDto {
+  username?: string | null;
+  password?: string | null;
+}
+
 export interface ProblemDetails {
   type?: string | null;
   title?: string | null;
@@ -277,18 +282,18 @@ export class HttpClient<SecurityDataType = unknown> {
       const data = !responseFormat
         ? r
         : await responseToParse[responseFormat]()
-          .then((data) => {
-            if (r.ok) {
-              r.data = data;
-            } else {
-              r.error = data;
-            }
-            return r;
-          })
-          .catch((e) => {
-            r.error = e;
-            return r;
-          });
+            .then((data) => {
+              if (r.ok) {
+                r.data = data;
+              } else {
+                r.error = data;
+              }
+              return r;
+            })
+            .catch((e) => {
+              r.error = e;
+              return r;
+            });
 
       if (cancelToken) {
         this.abortControllers.delete(cancelToken);
@@ -308,6 +313,36 @@ export class Api<
   SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
   api = {
+    /**
+     * No description
+     *
+     * @tags Auth
+     * @name AuthLoginUalCreate
+     * @request POST:/api/Auth/login-ual
+     */
+    authLoginUalCreate: (data: LoginRequestDto, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/Auth/login-ual`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Auth
+     * @name AuthMeList
+     * @request GET:/api/Auth/me
+     */
+    authMeList: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/Auth/me`,
+        method: "GET",
+        ...params,
+      }),
+
     /**
      * No description
      *
