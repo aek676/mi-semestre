@@ -34,5 +34,32 @@ namespace backend.Controllers
                 return Unauthorized(result);
             }
         }
+
+        [HttpGet("me")]
+        public async Task<IActionResult> Me([FromHeader(Name = "X-Session-Cookie")] string sessionCookieHeader)
+        {
+            var cookie = sessionCookieHeader;
+            if (string.IsNullOrEmpty(cookie))
+            {
+                if (Request.Headers.TryGetValue("Cookie", out var cookieHeaderValue))
+                    cookie = cookieHeaderValue.ToString();
+            }
+
+            if (string.IsNullOrEmpty(cookie))
+            {
+                return BadRequest("Session cookie is required in 'X-Session-Cookie' or 'Cookie' header.");
+            }
+
+            var result = await _blackboardService.GetUserDataAsync(cookie);
+
+            if (result.IsSuccess)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
     }
 }

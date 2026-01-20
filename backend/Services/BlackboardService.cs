@@ -77,28 +77,11 @@ namespace backend.Services
                         finalCookies = finalCookies + "; " + string.Join("; ", newCookies);
                     }
 
-                    var requestApi = new HttpRequestMessage(HttpMethod.Get, API_ME_URL);
-                    requestApi.Headers.Add("Cookie", finalCookies);
-
-                    var responseApi = await client.SendAsync(requestApi);
-                    object userDataObj = new { status = "Autenticado, pero API falló" };
-
-                    if (responseApi.IsSuccessStatusCode)
-                    {
-                        var jsonApi = await responseApi.Content.ReadAsStringAsync();
-                        try
-                        {
-                            userDataObj = JsonSerializer.Deserialize<object>(jsonApi);
-                        }
-                        catch { }
-                    }
-
                     return new LoginResponseDto
                     {
                         IsSuccess = true,
                         Message = "Login Exitoso",
-                        SessionCookie = finalCookies, // Save the session cookies at the frontend
-                        UserData = userDataObj
+                        SessionCookie = finalCookies // Save the session cookies at the frontend
                     };
                 }
                 else
@@ -106,6 +89,50 @@ namespace backend.Services
                     var errorHtml = await responsePost.Content.ReadAsStringAsync();
                     string cleanHtml = Regex.Replace(errorHtml, "<noscript>.*?</noscript>", "", RegexOptions.Singleline);
                     return new LoginResponseDto { IsSuccess = false, Message = "Fallo en login. Revise contraseña." };
+                }
+            }
+        }
+
+        public async Task<UserResponseDto> GetUserDataAsync(string sessionCookie)
+        {
+            if (string.IsNullOrEmpty(sessionCookie))
+                return new UserResponseDto { IsSuccess = false, Message = "Session cookie faltante." };
+
+            var handler = new HttpClientHandler
+            {
+                UseCookies = false,
+                AllowAutoRedirect = false,
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+            };
+
+            using (var client = new HttpClient(handler))
+            {
+                client.BaseAddress = new Uri(BASE_URL);
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                client.DefaultRequestHeaders.Add("Accept", "*/*");
+                client.DefaultRequestHeaders.ExpectContinue = false;
+
+                var requestApi = new HttpRequestMessage(HttpMethod.Get, API_ME_URL);
+                requestApi.Headers.Add("Cookie", sessionCookie);
+
+                var responseApi = await client.SendAsync(requestApi);
+
+                if (responseApi.IsSuccessStatusCode)
+                {
+                    var jsonApi = await responseApi.Content.ReadAsStringAsync();
+                    try
+                    {
+                        var userDataObj = JsonSerializer.Deserialize<object>(jsonApi);
+                        return new UserResponseDto { IsSuccess = true, Message = "OK", UserData = userDataObj };
+                    }
+                    catch
+                    {
+                        return new UserResponseDto { IsSuccess = true, Message = "OK", UserData = jsonApi };
+                    }
+                }
+                else
+                {
+                    return new UserResponseDto { IsSuccess = false, Message = $"API returned {(int)responseApi.StatusCode}" };
                 }
             }
         }
