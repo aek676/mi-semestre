@@ -1,13 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import ProductList from "../components/ProductList.astro";
-import { Api } from "../lib/api";
+import { api } from "../lib/apiClient";
 
 export const prerender = false;
-
-const api = new Api({
-  baseUrl: import.meta.env.API_BASE_URL || process.env.API_BASE_URL,
-});
 
 const response = await api.api.productsList();
 ---
