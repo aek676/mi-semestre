@@ -10,7 +10,7 @@ namespace backend.Models
         [BsonRepresentation(BsonType.ObjectId)]
         [Required]
         public string Id { get; set; } = default!;
-        public string Name { get; set; }
+        public required string Name { get; set; }
         public double Price { get; set; }
         public int Quantity { get; set; }
 

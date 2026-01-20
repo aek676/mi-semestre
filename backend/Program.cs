@@ -1,4 +1,5 @@
 using backend.Repositories;
+using backend.Services;
 using DotNetEnv;
 
 DotNetEnv.Env.Load();
@@ -16,6 +17,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IBlackboardService, BlackboardService>();
 builder.Services.AddScoped<backend.Data.MongoDbContext>();
 builder.Services.AddCors();
 
@@ -26,7 +28,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:3000"));
+    app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("*"));
 }
 
 app.UseHttpsRedirection();

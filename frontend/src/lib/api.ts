@@ -18,6 +18,20 @@ export interface CreateProductDto {
   quantity?: number;
 }
 
+export interface LoginRequestDto {
+  /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
+  password: string;
+}
+
+export interface LoginResponseDto {
+  isSuccess?: boolean;
+  /** @minLength 1 */
+  message: string;
+  sessionCookie?: string | null;
+}
+
 export interface ProblemDetails {
   type?: string | null;
   title?: string | null;
@@ -43,6 +57,19 @@ export interface UpdateProductDto {
   price?: number;
   /** @format int32 */
   quantity?: number;
+}
+
+export interface UserDetailDto {
+  given?: string | null;
+  family?: string | null;
+  email?: string | null;
+  avatar?: string | null;
+}
+
+export interface UserResponseDto {
+  isSuccess?: boolean;
+  message?: string | null;
+  userData?: UserDetailDto;
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -277,18 +304,18 @@ export class HttpClient<SecurityDataType = unknown> {
       const data = !responseFormat
         ? r
         : await responseToParse[responseFormat]()
-          .then((data) => {
-            if (r.ok) {
-              r.data = data;
-            } else {
-              r.error = data;
-            }
-            return r;
-          })
-          .catch((e) => {
-            r.error = e;
-            return r;
-          });
+            .then((data) => {
+              if (r.ok) {
+                r.data = data;
+              } else {
+                r.error = data;
+              }
+              return r;
+            })
+            .catch((e) => {
+              r.error = e;
+              return r;
+            });
 
       if (cancelToken) {
         this.abortControllers.delete(cancelToken);
@@ -308,6 +335,38 @@ export class Api<
   SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
   api = {
+    /**
+     * No description
+     *
+     * @tags Auth
+     * @name AuthLoginUalCreate
+     * @request POST:/api/Auth/login-ual
+     */
+    authLoginUalCreate: (data: LoginRequestDto, params: RequestParams = {}) =>
+      this.request<LoginResponseDto, string | LoginResponseDto>({
+        path: `/api/Auth/login-ual`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Auth
+     * @name AuthMeList
+     * @request GET:/api/Auth/me
+     */
+    authMeList: (params: RequestParams = {}) =>
+      this.request<UserResponseDto, any>({
+        path: `/api/Auth/me`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
     /**
      * No description
      *
