@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace backend.Services
 {
@@ -120,31 +121,23 @@ namespace backend.Services
                 if (responseApi.IsSuccessStatusCode)
                 {
                     var jsonApi = await responseApi.Content.ReadAsStringAsync();
-                    try
-                    {
-                        var options = new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        };
 
-                        var userDataObj = JsonSerializer.Deserialize<UserDetailDto>(jsonApi, options);
+                    var root = JsonNode.Parse(jsonApi);
 
-                        return new UserResponseDto
-                        {
-                            IsSuccess = true,
-                            Message = "OK",
-                            UserData = userDataObj!
-                        };
-                    }
-                    catch (JsonException)
+                    var flatUser = new UserDetailDto
                     {
-                        return new UserResponseDto
-                        {
-                            IsSuccess = false,
-                            Message = "Error procesando la respuesta de Blackboard",
-                            UserData = null
-                        };
-                    }
+                        Given = root?["name"]?["given"]?.ToString() ?? string.Empty,
+                        Family = root?["name"]?["family"]?.ToString() ?? string.Empty,
+                        Email = root?["contact"]?["email"]?.ToString() ?? string.Empty,
+                        Avatar = root?["avatar"]?["viewUrl"]?.ToString() ?? string.Empty
+                    };
+
+                    return new UserResponseDto
+                    {
+                        IsSuccess = true,
+                        Message = "OK",
+                        UserData = flatUser
+                    };
                 }
                 else
                 {
