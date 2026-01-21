@@ -1,12 +1,18 @@
 ---
+import LogoUal from '@/assets/img/Logo-UAL.png';
 import { Icon } from 'astro-icon/components';
 import { actions, isInputError } from 'astro:actions';
+import { Image } from 'astro:assets';
 
 const result = Astro.getActionResult(actions.login);
 const inputErrors = isInputError(result?.error) ? result.error.fields : {};
 ---
 
 <div class="p-8">
+  <div class="flex flex-col justify-center items-center">
+    <Image src={LogoUal} alt="Logo UAL" loading={'eager'} />
+    <h1 class="text-brand-dark text-3xl font-bold mt-4">Mi Cuatri</h1>
+  </div>
   <form class="space-y-6" method="post" action={actions.login}>
     <div>
       <label
@@ -24,7 +30,7 @@ const inputErrors = isInputError(result?.error) ? result.error.fields : {};
           id="username"
           name="username"
           class="w-full pl-10 pr-4 py-2 border border-brand-light/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-main focus:border-transparent transition-all placeholder-brand-light/70 text-brand-dark bg-gray-50/50"
-          placeholder="username"
+          placeholder="Username"
         />
       </div>
       {
