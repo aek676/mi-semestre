@@ -3,7 +3,6 @@ import { Icon } from 'astro-icon/components';
 import { actions, isInputError } from 'astro:actions';
 
 const result = Astro.getActionResult(actions.login);
-console.log(result);
 const inputErrors = isInputError(result?.error) ? result.error.fields : {};
 ---
 
