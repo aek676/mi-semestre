@@ -7,12 +7,21 @@ using System.Text.Json.Nodes;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service for Blackboard authentication and data retrieval operations.
+    /// </summary>
     public class BlackboardService : IBlackboardService
     {
         private const string BASE_URL = "https://aulavirtual.ual.es";
         private const string LOGIN_PATH = "/webapps/login/";
         private const string API_ME_URL = "/learn/api/public/v1/users/me";
 
+        /// <summary>
+        /// Authenticates a user with Blackboard credentials.
+        /// </summary>
+        /// <param name="username">The user's username.</param>
+        /// <param name="password">The user's password.</param>
+        /// <returns>A login response containing authentication status and session cookie if successful.</returns>
         public async Task<LoginResponseDto> AuthenticateAsync(string username, string password)
         {
             var handler = new HttpClientHandler
@@ -93,6 +102,11 @@ namespace backend.Services
             }
         }
 
+        /// <summary>
+        /// Retrieves user data from Blackboard using a session cookie.
+        /// </summary>
+        /// <param name="sessionCookie">The session cookie from a successful authentication.</param>
+        /// <returns>A user response containing user information if successful.</returns>
         public async Task<UserResponseDto> GetUserDataAsync(string sessionCookie)
         {
             if (string.IsNullOrEmpty(sessionCookie))
@@ -145,6 +159,13 @@ namespace backend.Services
             }
         }
 
+        /// <summary>
+        /// Retrieves a proxied image response from Blackboard.
+        /// </summary>
+        /// <param name="sessionCookie">The session cookie for authentication.</param>
+        /// <param name="imageUrl">The URL of the image to proxy.</param>
+        /// <param name="acceptHeader">The optional Accept header for the image request.</param>
+        /// <returns>The proxied HTTP response message or null if unsuccessful.</returns>
         public async Task<HttpResponseMessage?> GetProxiedImageResponseAsync(string sessionCookie, string imageUrl, string? acceptHeader = null)
         {
             if (string.IsNullOrEmpty(imageUrl)) return null;

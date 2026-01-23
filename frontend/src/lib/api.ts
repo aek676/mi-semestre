@@ -10,6 +10,7 @@
  * ---------------------------------------------------------------
  */
 
+/** Data transfer object for creating a new product. */
 export interface CreateProductDto {
   name?: string | null;
   /** @format double */
@@ -18,17 +19,30 @@ export interface CreateProductDto {
   quantity?: number;
 }
 
+/** Data transfer object for login requests. */
 export interface LoginRequestDto {
-  /** @minLength 1 */
+  /**
+   * The username for authentication.
+   * @minLength 1
+   */
   username: string;
-  /** @minLength 1 */
+  /**
+   * The password for authentication.
+   * @minLength 1
+   */
   password: string;
 }
 
+/** Data transfer object for login responses. */
 export interface LoginResponseDto {
+  /** Indicates whether the authentication was successful. */
   isSuccess?: boolean;
-  /** @minLength 1 */
+  /**
+   * The response message describing the authentication result.
+   * @minLength 1
+   */
   message: string;
+  /** The session cookie for authenticated requests. */
   sessionCookie?: string | null;
 }
 
@@ -42,6 +56,7 @@ export interface ProblemDetails {
   [key: string]: any;
 }
 
+/** Data transfer object for product information. */
 export interface ProductDto {
   id?: string | null;
   name?: string | null;
@@ -51,6 +66,7 @@ export interface ProductDto {
   quantity?: number;
 }
 
+/** Data transfer object for updating an existing product. */
 export interface UpdateProductDto {
   name?: string | null;
   /** @format double */
@@ -59,16 +75,25 @@ export interface UpdateProductDto {
   quantity?: number;
 }
 
+/** Data transfer object containing detailed user information. */
 export interface UserDetailDto {
+  /** The user's given name. */
   given?: string | null;
+  /** The user's family name. */
   family?: string | null;
+  /** The user's email address. */
   email?: string | null;
+  /** The URL to the user's avatar image. */
   avatar?: string | null;
 }
 
+/** Data transfer object for user response information. */
 export interface UserResponseDto {
+  /** Indicates whether the user retrieval was successful. */
   isSuccess?: boolean;
+  /** The response message describing the operation result. */
   message?: string | null;
+  /** Data transfer object containing detailed user information. */
   userData?: UserDetailDto;
 }
 
@@ -340,6 +365,7 @@ export class Api<
      *
      * @tags Auth
      * @name AuthLoginUalCreate
+     * @summary Authenticates a user with the provided credentials.
      * @request POST:/api/Auth/login-ual
      */
     authLoginUalCreate: (data: LoginRequestDto, params: RequestParams = {}) =>
@@ -357,6 +383,7 @@ export class Api<
      *
      * @tags Auth
      * @name AuthMeList
+     * @summary Retrieves the current authenticated user's information.
      * @request GET:/api/Auth/me
      */
     authMeList: (params: RequestParams = {}) =>
@@ -396,6 +423,7 @@ Accepts token only via X-Session-Cookie header
      *
      * @tags Products
      * @name ProductsList
+     * @summary Retrieves all products.
      * @request GET:/api/Products
      */
     productsList: (params: RequestParams = {}) =>
@@ -411,6 +439,7 @@ Accepts token only via X-Session-Cookie header
      *
      * @tags Products
      * @name ProductsCreate
+     * @summary Creates a new product.
      * @request POST:/api/Products
      */
     productsCreate: (data: CreateProductDto, params: RequestParams = {}) =>
@@ -428,6 +457,7 @@ Accepts token only via X-Session-Cookie header
      *
      * @tags Products
      * @name ProductsDetail
+     * @summary Retrieves a product by its identifier.
      * @request GET:/api/Products/{id}
      */
     productsDetail: (id: string, params: RequestParams = {}) =>
@@ -443,6 +473,7 @@ Accepts token only via X-Session-Cookie header
      *
      * @tags Products
      * @name ProductsUpdate
+     * @summary Updates an existing product.
      * @request PUT:/api/Products/{id}
      */
     productsUpdate: (
@@ -463,6 +494,7 @@ Accepts token only via X-Session-Cookie header
      *
      * @tags Products
      * @name ProductsDelete
+     * @summary Deletes a product by its identifier.
      * @request DELETE:/api/Products/{id}
      */
     productsDelete: (id: string, params: RequestParams = {}) =>

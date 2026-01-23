@@ -5,16 +5,27 @@ using backend.DTOs;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// Controller for managing product operations.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class ProductsController : ControllerBase
     {
         private readonly IProductRepository _productRepository;
+        /// <summary>
+        /// Initializes a new instance of the ProductsController class.
+        /// </summary>
+        /// <param name="productRepository">The product repository for data access.</param>
         public ProductsController(IProductRepository productRepository)
         {
             _productRepository = productRepository;
         }
 
+        /// <summary>
+        /// Retrieves all products.
+        /// </summary>
+        /// <returns>A collection of all products.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetAll()
         {
@@ -25,6 +36,11 @@ namespace backend.Controllers
             return Ok(productDto);
         }
 
+        /// <summary>
+        /// Retrieves a product by its identifier.
+        /// </summary>
+        /// <param name="id">The product identifier.</param>
+        /// <returns>The product with the specified identifier or not found if it doesn't exist.</returns>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -38,6 +54,11 @@ namespace backend.Controllers
             return Ok(productDto);
         }
 
+        /// <summary>
+        /// Creates a new product.
+        /// </summary>
+        /// <param name="createDto">The product creation data transfer object.</param>
+        /// <returns>The created product with its assigned identifier.</returns>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto createDto)
@@ -61,6 +82,12 @@ namespace backend.Controllers
             return CreatedAtAction(nameof(GetById), new { id = newProduct.Id }, resultDto);
         }
 
+        /// <summary>
+        /// Updates an existing product.
+        /// </summary>
+        /// <param name="id">The identifier of the product to update.</param>
+        /// <param name="updateDto">The product update data transfer object.</param>
+        /// <returns>No content if successful or not found if product doesn't exist.</returns>
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateProductDto updateDto)
         {
@@ -77,6 +104,11 @@ namespace backend.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Deletes a product by its identifier.
+        /// </summary>
+        /// <param name="id">The identifier of the product to delete.</param>
+        /// <returns>No content if successful or not found if product doesn't exist.</returns>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
