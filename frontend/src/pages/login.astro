@@ -1,6 +1,12 @@
 ---
 import LoginComponent from '../components/Login.astro';
 import Layout from '../layouts/Layout.astro';
+import { actions } from 'astro:actions';
+
+const result = Astro.getActionResult(actions.login);
+if (result && !result.error) {
+  return Astro.redirect('/ultra/profile');
+}
 ---
 
 <Layout>

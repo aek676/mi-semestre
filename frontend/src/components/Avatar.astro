@@ -1,0 +1,37 @@
+---
+import SecureAvatar from './SecureAvatar';
+
+const {
+  avatarUrl,
+  sessionToken,
+  size = 100,
+  alt = 'Avatar',
+  className = '',
+} = Astro.props as {
+  avatarUrl: string;
+  sessionToken?: string;
+  size?: number;
+  alt?: string;
+  className?: string;
+};
+---
+
+{
+  avatarUrl && sessionToken ? (
+    <SecureAvatar
+      avatarUrl={avatarUrl}
+      sessionToken={sessionToken}
+      alt={alt}
+      size={size}
+      className={className}
+      client:load
+    />
+  ) : (
+    <div
+      class={`bg-linear-to-br from-gray-400 to-gray-600 text-white rounded-full flex items-center justify-center font-semibold ${className}`}
+      style={`width: ${size}px; height: ${size}px; font-size: ${size / 2.5}px;`}
+    >
+      {alt?.substring(0, 2).toUpperCase() ?? '??'}
+    </div>
+  )
+}

@@ -1,0 +1,47 @@
+---
+import { api } from '@/lib/apiClient';
+import Avatar from '@/components/Avatar.astro';
+
+const sessionToken = Astro.cookies.get('bb_session')?.value;
+let user = null;
+
+if (sessionToken) {
+  try {
+    const { data } = await api.api.authMeList({
+      headers: {
+        'X-Session-Cookie': sessionToken,
+      },
+    });
+
+    if (data?.isSuccess) {
+      user = data.userData;
+    }
+  } catch (error) {
+    console.error('Error validando sesión:', error);
+  }
+}
+
+
+---
+
+<h1>Profile</h1>
+
+{
+  user ? (
+    <div>
+      <p>
+        Welcome, <strong>{user.family}</strong>!
+      </p>
+      <p>Email: {user.email}</p>
+      <p>Username: {user.given}</p>
+
+      {user.avatar ? (
+        <Avatar avatarUrl={user.avatar} sessionToken={sessionToken} alt={`Avatar de ${user.given}`} size={100} />
+      ) : (
+        <p>No avatar available</p>
+      )}
+    </div>
+  ) : (
+    <p>You are not logged in.</p>
+  )
+}
