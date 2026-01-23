@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.IO;
 using backend.Repositories;
 using backend.Services;
 using DotNetEnv;
@@ -15,7 +17,12 @@ if (string.IsNullOrEmpty(connetionString))
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IBlackboardService, BlackboardService>();
 builder.Services.AddScoped<backend.Data.MongoDbContext>();

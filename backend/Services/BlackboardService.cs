@@ -3,7 +3,6 @@ using backend.Dtos;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace backend.Services
@@ -143,6 +142,47 @@ namespace backend.Services
                 {
                     return new UserResponseDto { IsSuccess = false, Message = $"API returned {(int)responseApi.StatusCode}" };
                 }
+            }
+        }
+
+        public async Task<HttpResponseMessage?> GetProxiedImageResponseAsync(string sessionCookie, string imageUrl, string? acceptHeader = null)
+        {
+            if (string.IsNullOrEmpty(imageUrl)) return null;
+            if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)) return null;
+
+            // Allow only the expected host to prevent SSRF
+            if (!uri.Host.Contains("aulavirtual.ual.es")) return null;
+
+            // Create a fresh HttpClient with explicit cookie handling (UseCookies = false)
+            // to avoid accumulated state from connection pooling that causes 401 on second call
+            var handler = new HttpClientHandler
+            {
+                UseCookies = false,
+                AllowAutoRedirect = true, // Follow redirects (302, 301, etc.) for avatar URLs
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+            };
+
+            using (var client = new HttpClient(handler))
+            {
+                client.Timeout = TimeSpan.FromSeconds(30); // Timeout for image downloads
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                client.DefaultRequestHeaders.ExpectContinue = false;
+
+                var request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                var accept = string.IsNullOrWhiteSpace(acceptHeader)
+                    ? "image/avif,image/webp,image/*,*/*;q=0.8"
+                    : acceptHeader;
+                request.Headers.TryAddWithoutValidation("Accept", accept);
+
+                if (!string.IsNullOrEmpty(sessionCookie))
+                {
+                    var cookieHeader = sessionCookie.Contains("=") ? sessionCookie : $"bb_session={sessionCookie}";
+                    request.Headers.Add("Cookie", cookieHeader);
+                }
+
+                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                return response;
             }
         }
     }
