@@ -1,6 +1,14 @@
 ---
+import Logout from '@/components/Logout.astro';
+import ProfileComponent from '@/components/Profile.astro';
+import Layout from '@/layouts/Layout.astro';
 import { api } from '@/lib/apiClient';
-import Avatar from '@/components/Avatar.astro';
+import { actions } from 'astro:actions';
+
+const logoutResult = Astro.getActionResult(actions.logout);
+if (logoutResult && !logoutResult.error) {
+  return Astro.redirect('/login');
+}
 
 const sessionToken = Astro.cookies.get('bb_session')?.value;
 let user = null;
@@ -17,31 +25,19 @@ if (sessionToken) {
       user = data.userData;
     }
   } catch (error) {
-    console.error('Error validando sesión:', error);
+    console.error('Error validating session:', error);
   }
 }
 
-
+if (!user) {
+  return Astro.redirect('/login');
+}
 ---
 
-<h1>Profile</h1>
+<Layout>
+  <div class="flex-1 flex flex-col p-6 overflow-y-auto">
+    <ProfileComponent user={user} sessionToken={sessionToken} />
 
-{
-  user ? (
-    <div>
-      <p>
-        Welcome, <strong>{user.family}</strong>!
-      </p>
-      <p>Email: {user.email}</p>
-      <p>Username: {user.given}</p>
-
-      {user.avatar ? (
-        <Avatar avatarUrl={user.avatar} sessionToken={sessionToken} alt={`Avatar de ${user.given}`} size={100} />
-      ) : (
-        <p>No avatar available</p>
-      )}
-    </div>
-  ) : (
-    <p>You are not logged in.</p>
-  )
-}
+    <Logout />
+  </div>
+</Layout>
