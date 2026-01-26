@@ -1,0 +1,43 @@
+---
+import Logout from '@/components/Logout.astro';
+import ProfileComponent from '@/components/Profile.astro';
+import Layout from '@/layouts/Layout.astro';
+import { api } from '@/lib/apiClient';
+import { actions } from 'astro:actions';
+
+const logoutResult = Astro.getActionResult(actions.logout);
+if (logoutResult && !logoutResult.error) {
+  return Astro.redirect('/login');
+}
+
+const sessionToken = Astro.cookies.get('bb_session')?.value;
+let user = null;
+
+if (sessionToken) {
+  try {
+    const { data } = await api.api.authMeList({
+      headers: {
+        'X-Session-Cookie': sessionToken,
+      },
+    });
+
+    if (data?.isSuccess) {
+      user = data.userData;
+    }
+  } catch (error) {
+    console.error('Error validating session:', error);
+  }
+}
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+---
+
+<Layout>
+  <div class="flex-1 flex flex-col p-6 overflow-y-auto">
+    <ProfileComponent user={user} sessionToken={sessionToken} />
+
+    <Logout />
+  </div>
+</Layout>

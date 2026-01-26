@@ -1,6 +1,6 @@
 import { Api } from './api';
 
-const baseUrl = import.meta.env.API_BASE_URL || process.env.API_BASE_URL;
+const baseUrl = import.meta.env.INTERNAL_API_BASE_URL;
 
 let instance: Api<unknown> | null = null;
 

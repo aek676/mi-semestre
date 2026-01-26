@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace backend.DTOs
 {
+    /// <summary>
+    /// Data transfer object for creating a new product.
+    /// </summary>
     public record CreateProductDto(
         [Required(ErrorMessage = "El nombre es obligatorio")]
         string Name,

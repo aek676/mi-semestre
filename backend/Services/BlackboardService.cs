@@ -3,17 +3,25 @@ using backend.Dtos;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service for Blackboard authentication and data retrieval operations.
+    /// </summary>
     public class BlackboardService : IBlackboardService
     {
         private const string BASE_URL = "https://aulavirtual.ual.es";
         private const string LOGIN_PATH = "/webapps/login/";
         private const string API_ME_URL = "/learn/api/public/v1/users/me";
 
+        /// <summary>
+        /// Authenticates a user with Blackboard credentials.
+        /// </summary>
+        /// <param name="username">The user's username.</param>
+        /// <param name="password">The user's password.</param>
+        /// <returns>A login response containing authentication status and session cookie if successful.</returns>
         public async Task<LoginResponseDto> AuthenticateAsync(string username, string password)
         {
             var handler = new HttpClientHandler
@@ -94,6 +102,11 @@ namespace backend.Services
             }
         }
 
+        /// <summary>
+        /// Retrieves user data from Blackboard using a session cookie.
+        /// </summary>
+        /// <param name="sessionCookie">The session cookie from a successful authentication.</param>
+        /// <returns>A user response containing user information if successful.</returns>
         public async Task<UserResponseDto> GetUserDataAsync(string sessionCookie)
         {
             if (string.IsNullOrEmpty(sessionCookie))
@@ -143,6 +156,54 @@ namespace backend.Services
                 {
                     return new UserResponseDto { IsSuccess = false, Message = $"API returned {(int)responseApi.StatusCode}" };
                 }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a proxied image response from Blackboard.
+        /// </summary>
+        /// <param name="sessionCookie">The session cookie for authentication.</param>
+        /// <param name="imageUrl">The URL of the image to proxy.</param>
+        /// <param name="acceptHeader">The optional Accept header for the image request.</param>
+        /// <returns>The proxied HTTP response message or null if unsuccessful.</returns>
+        public async Task<HttpResponseMessage?> GetProxiedImageResponseAsync(string sessionCookie, string imageUrl, string? acceptHeader = null)
+        {
+            if (string.IsNullOrEmpty(imageUrl)) return null;
+            if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)) return null;
+
+            // Allow only the expected host to prevent SSRF
+            if (!uri.Host.Contains("aulavirtual.ual.es")) return null;
+
+            // Create a fresh HttpClient with explicit cookie handling (UseCookies = false)
+            // to avoid accumulated state from connection pooling that causes 401 on second call
+            var handler = new HttpClientHandler
+            {
+                UseCookies = false,
+                AllowAutoRedirect = true, // Follow redirects (302, 301, etc.) for avatar URLs
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+            };
+
+            using (var client = new HttpClient(handler))
+            {
+                client.Timeout = TimeSpan.FromSeconds(30); // Timeout for image downloads
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                client.DefaultRequestHeaders.ExpectContinue = false;
+
+                var request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                var accept = string.IsNullOrWhiteSpace(acceptHeader)
+                    ? "image/avif,image/webp,image/*,*/*;q=0.8"
+                    : acceptHeader;
+                request.Headers.TryAddWithoutValidation("Accept", accept);
+
+                if (!string.IsNullOrEmpty(sessionCookie))
+                {
+                    var cookieHeader = sessionCookie.Contains("=") ? sessionCookie : $"bb_session={sessionCookie}";
+                    request.Headers.Add("Cookie", cookieHeader);
+                }
+
+                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                return response;
             }
         }
     }

@@ -4,17 +4,29 @@ using backend.Services;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// Controller for handling authentication operations.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly IBlackboardService _blackboardService;
 
+        /// <summary>
+        /// Initializes a new instance of the AuthController class.
+        /// </summary>
+        /// <param name="blackboardService">The blackboard service for authentication.</param>
         public AuthController(IBlackboardService blackboardService)
         {
             _blackboardService = blackboardService;
         }
 
+        /// <summary>
+        /// Authenticates a user with the provided credentials.
+        /// </summary>
+        /// <param name="request">The login request containing username and password.</param>
+        /// <returns>A login response with authentication result and session cookie if successful.</returns>
         [HttpPost("login-ual")]
         [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status401Unauthorized)]
@@ -33,6 +45,11 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Retrieves the current authenticated user's information.
+        /// </summary>
+        /// <param name="sessionCookieHeader">The session cookie from the X-Session-Cookie header.</param>
+        /// <returns>User response containing user details or error message.</returns>
         [HttpGet("me")]
         [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<UserResponseDto>> Me([FromHeader(Name = "X-Session-Cookie")] string? sessionCookieHeader)
