@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using backend.Enums;
 
 namespace backend.Dtos
 {
@@ -29,7 +30,7 @@ namespace backend.Dtos
 
         /// <summary>Gets the event category type mapped from Blackboard 'type' field. Values: Course, GradebookColumn, Institution, OfficeHours, Personal.</summary>
         [JsonPropertyName("category")]
-        public string Category { get; init; } = string.Empty;
+        public CalendarCategory Category { get; init; }
 
         /// <summary>Gets the cleaned subject/course name extracted from the calendar name using regex. Empty for Institution/Personal categories.</summary>
         [JsonPropertyName("subject")]
