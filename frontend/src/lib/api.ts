@@ -21,28 +21,40 @@ export enum CalendarCategory {
 
 /** Clean calendar event item mapped from Blackboard raw calendar entries. */
 export interface CalendarItemDto {
-  /** Gets the calendar item identifier mapped from the Blackboard 'id' field. */
-  calendarid?: string | null;
-  /** Gets the event title. */
-  title?: string | null;
+  /**
+   * Gets the calendar item identifier mapped from the Blackboard 'id' field.
+   * @minLength 1
+   */
+  calendarid: string;
+  /**
+   * Gets the event title.
+   * @minLength 1
+   */
+  title: string;
   /**
    * Gets the event start date/time in UTC.
    * @format date-time
    */
-  start?: string;
+  start: string;
   /**
    * Gets the event end date/time in UTC.
    * @format date-time
    */
-  end?: string;
+  end: string;
   /** Gets the physical or virtual location of the event. */
   location?: string | null;
   /** Represents the category types for calendar events from Blackboard. */
-  category?: CalendarCategory;
-  /** Gets the cleaned subject/course name extracted from the calendar name using regex. Empty for Institution/Personal categories. */
-  subject?: string | null;
-  /** Gets the hexadecimal color code for visual representation. */
-  color?: string | null;
+  category: CalendarCategory;
+  /**
+   * Gets the cleaned subject/course name extracted from the calendar name using regex. Empty for Institution/Personal categories.
+   * @minLength 1
+   */
+  subject: string;
+  /**
+   * Gets the hexadecimal color code for visual representation.
+   * @minLength 1
+   */
+  color: string;
   /** Gets the optional event description. */
   description?: string | null;
 }
