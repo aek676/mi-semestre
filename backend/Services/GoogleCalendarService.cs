@@ -26,6 +26,12 @@ namespace backend.Services
         private readonly string _clientSecret;
         private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GoogleCalendarService"/> class.
+        /// </summary>
+        /// <param name="userRepository">Repository to read/update users and Google account tokens.</param>
+        /// <param name="configuration">Configuration for Google client ID and secret.</param>
+        /// <param name="logger">Logger for diagnostic messages.</param>
         public GoogleCalendarService(IUserRepository userRepository, IConfiguration configuration, ILogger<GoogleCalendarService> logger)
         {
             _userRepository = userRepository;
@@ -34,6 +40,12 @@ namespace backend.Services
             _clientSecret = configuration["Google:ClientSecret"] ?? Environment.GetEnvironmentVariable("Google__ClientSecret") ?? string.Empty;
         }
 
+        /// <summary>
+        /// Exports the provided calendar items to the user's Google Calendar and returns a summary.
+        /// </summary>
+        /// <param name="username">Local username of the Google account owner.</param>
+        /// <param name="items">Collection of calendar items to export.</param>
+        /// <returns>ExportSummaryDto summarizing created, updated, and failed counts and errors.</returns>
         public async Task<ExportSummaryDto> ExportEventsAsync(string username, IEnumerable<CalendarItemDto> items)
         {
             var summary = new ExportSummaryDto { Created = 0, Updated = 0, Failed = 0, Errors = new List<string>() };

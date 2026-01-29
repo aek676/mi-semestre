@@ -12,6 +12,9 @@ using System.Threading;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// Controller for Google OAuth2 connect/callback flow to link Google accounts to user accounts.
+    /// </summary>
     [ApiController]
     [Route("api/auth/google")]
     public class GoogleAuthController : ControllerBase
@@ -24,6 +27,12 @@ namespace backend.Controllers
         // In production, use distributed cache (Redis) instead of in-memory
         private static readonly Dictionary<string, (string cookie, DateTime expiry)> _sessionCache = new();
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GoogleAuthController"/> class.
+        /// </summary>
+        /// <param name="userRepository">User repository used to fetch and persist user accounts.</param>
+        /// <param name="blackboardService">Service for validating Blackboard sessions and retrieving user info.</param>
+        /// <param name="configuration">Application configuration containing Google OAuth settings.</param>
         public GoogleAuthController(IUserRepository userRepository, IBlackboardService blackboardService, IConfiguration configuration)
         {
             _userRepository = userRepository;
@@ -36,10 +45,12 @@ namespace backend.Controllers
         /// Uses the minimal calendar events scope and requests offline access (refresh token).
         /// Stores the Blackboard session temporarily to retrieve it in the callback.
         /// </summary>
+        /// <param name="sessionCookieHeader">Optional session cookie extracted from the 'X-Session-Cookie' header; falls back to 'Cookie' header.</param>
+        /// <returns>200 OK with the authorization URL and state token, or 400/500 on error.</returns>
         [HttpGet("connect")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult Connect([FromHeader(Name = "X-Session-Cookie")] string? sessionCookieHeader)
+        public ActionResult Connect([FromHeader(Name = "X-Session-Cookie")] string? sessionCookieHeader) 
         {
             var clientId = _configuration["Google:ClientId"] ?? Environment.GetEnvironmentVariable("Google__ClientId");
             var redirect = _configuration["Google:RedirectUri"] ?? Environment.GetEnvironmentVariable("Google__RedirectUri");
@@ -83,10 +94,13 @@ namespace backend.Controllers
         /// OAuth2 callback endpoint that exchanges the authorization <paramref name="code"/> for tokens
         /// and links the Google account (stores refresh token) to the current authenticated user (identified via state token).
         /// </summary>
+        /// <param name="code">Authorization code returned by Google.</param>
+        /// <param name="state">State token used to correlate the OAuth flow with the originating session.</param>
+        /// <returns>200 OK on success (Google account linked), or 400/500 with error details.</returns>
         [HttpGet("callback")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> Callback([FromQuery] string? code, [FromQuery] string? state)
+        public async Task<ActionResult> Callback([FromQuery] string? code, [FromQuery] string? state) 
         {
             if (string.IsNullOrEmpty(code)) return BadRequest(new { message = "Missing code query parameter." });
             if (string.IsNullOrEmpty(state)) return BadRequest(new { message = "Missing state query parameter." });
