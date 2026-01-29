@@ -3,6 +3,14 @@ using backend.Models;
 using backend.Repositories;
 using System.Text.Json;
 using System.Globalization;
+using System.Linq;
+using System.Threading;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
+using Google.Apis.Services;
+using Google.Apis.Calendar.v3;
+using Google.Apis.Calendar.v3.Data;
 
 namespace backend.Services
 {
@@ -36,105 +44,113 @@ namespace backend.Services
                 throw new InvalidOperationException("User is not connected to Google Calendar.");
             }
 
-            string accessToken = await EnsureAccessTokenAsync(user);
+            var account = user.GoogleAccount;
 
-            // 2. Inicializar el cliente HTTP
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            client.BaseAddress = new Uri("https://www.googleapis.com/");
+            // Build token response and credential/flow for refresh and authorized requests
+            var token = new TokenResponse
+            {
+                AccessToken = account.AccessToken,
+                RefreshToken = account.RefreshToken,
+                ExpiresInSeconds = account.AccessTokenExpiry.HasValue ? (long?)(account.AccessTokenExpiry.Value - DateTime.UtcNow).TotalSeconds : null
+            };
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets { ClientId = _clientId, ClientSecret = _clientSecret }
+            });
+
+            var credential = new UserCredential(flow, user.Username, token);
+
+            // Refresh if needed
+            if (string.IsNullOrEmpty(account.AccessToken) || !account.AccessTokenExpiry.HasValue || account.AccessTokenExpiry.Value <= DateTime.UtcNow.AddMinutes(1))
+            {
+                if (string.IsNullOrEmpty(account.RefreshToken))
+                {
+                    throw new InvalidOperationException("Refresh token is not available for the user.");
+                }
+
+                var refreshed = await credential.RefreshTokenAsync(CancellationToken.None);
+                if (!refreshed)
+                {
+                    throw new InvalidOperationException("Failed to refresh Google access token");
+                }
+
+                account.AccessToken = credential.Token.AccessToken;
+                account.AccessTokenExpiry = DateTime.UtcNow.AddSeconds(credential.Token.ExpiresInSeconds ?? 3600);
+                await _userRepository.UpsertGoogleAccountAsync(user.Username, account);
+            }
+
+            var service = new CalendarService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = "mi-cuatri"
+            });
 
             foreach (var item in items)
             {
                 try
                 {
-                    // 3. Crear el payload del evento (UTC)
-                    var payload = new Dictionary<string, object>
+                    var eventResource = new Event
                     {
-                        ["summary"] = string.IsNullOrWhiteSpace(item.Subject) ? item.Title : $"{item.Subject} - {item.Title}",
-                        ["description"] = item.Description ?? "",
-                        ["location"] = item.Location ?? "",
-                        ["start"] = new Dictionary<string, string>
-                        {
-                            ["dateTime"] = item.Start.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ssZ"),
-                            ["timeZone"] = "UTC"
-                        },
-                        ["end"] = new Dictionary<string, string>
-                        {
-                            ["dateTime"] = item.End.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ssZ"),
-                            ["timeZone"] = "UTC"
-                        },
-                        ["extendedProperties"] = new Dictionary<string, object>
-                        {
-                            ["private"] = new Dictionary<string, string> { ["mi-cuatri-id"] = item.CalendarId }
-                        }
+                        Summary = string.IsNullOrWhiteSpace(item.Subject) ? item.Title : $"{item.Subject} - {item.Title}",
+                        Description = item.Description ?? string.Empty,
+                        Location = item.Location ?? string.Empty,
+                        Start = new EventDateTime { DateTimeDateTimeOffset = new DateTimeOffset(item.Start.ToUniversalTime()), TimeZone = "UTC" },
+                        End = new EventDateTime { DateTimeDateTimeOffset = new DateTimeOffset(item.End.ToUniversalTime()), TimeZone = "UTC" }
                     };
+
+                    // Set private extended properties via reflection to remain compatible across client versions
+                    var ext = new Event.ExtendedPropertiesData();
+                    var privateProp = ext.GetType().GetProperty("Private");
+                    if (privateProp != null && privateProp.PropertyType == typeof(IDictionary<string, string>))
+                    {
+                        privateProp.SetValue(ext, new Dictionary<string, string> { ["mi-cuatri-id"] = item.CalendarId });
+                    }
+                    else
+                    {
+                        // Fallback: try to find any IDictionary<string,string> property and set it
+                        var dictProp = ext.GetType().GetProperties().FirstOrDefault(pr => pr.PropertyType == typeof(IDictionary<string, string>));
+                        if (dictProp != null)
+                        {
+                            dictProp.SetValue(ext, new Dictionary<string, string> { ["mi-cuatri-id"] = item.CalendarId });
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Unable to set extended properties for event {CalendarId}", item.CalendarId);
+                        }
+                    }
+
+                    eventResource.ExtendedProperties = ext;
 
                     var colorId = GetClosestGoogleColorId(item.Color);
                     if (colorId != null)
                     {
-                        payload["colorId"] = colorId;
+                        eventResource.ColorId = colorId;
                     }
                     else if (!string.IsNullOrWhiteSpace(item.Color))
                     {
-                        // Color provided but invalid or unsupported — log and proceed without color
                         _logger.LogWarning("Invalid or unsupported color '{Color}' for event {CalendarId}; skipping color assignment.", item.Color, item.CalendarId);
                     }
 
-                    // 4. Buscar evento existente
-                    string listUri = $"calendar/v3/calendars/primary/events?privateExtendedProperty={System.Net.WebUtility.UrlEncode($"mi-cuatri-id={item.CalendarId}")}&fields=items(id)";
-                    var listResp = await client.GetAsync(listUri);
-                    var listContent = await listResp.Content.ReadAsStringAsync();
+                    // Find existing event by private extended property
+                    var listReq = service.Events.List("primary");
+                    listReq.PrivateExtendedProperty = $"mi-cuatri-id={item.CalendarId}";
+                    listReq.Fields = "items(id)";
+                    var list = await listReq.ExecuteAsync();
 
-                    if (!listResp.IsSuccessStatusCode)
-                    {
-                        throw new InvalidOperationException($"Failed to list events: {listResp.StatusCode}");
-                    }
-
-                    string eventId = null;
-                    using (var listDoc = JsonDocument.Parse(listContent))
-                    {
-                        if (listDoc.RootElement.TryGetProperty("items", out var arr) &&
-                            arr.ValueKind == JsonValueKind.Array && arr.GetArrayLength() > 0)
-                        {
-                            if (arr[0].TryGetProperty("id", out var idProp))
-                                eventId = idProp.GetString();
-
-                            if (arr.GetArrayLength() > 1)
-                                _logger.LogWarning("Multiple events found for mi-cuatri-id {Id}, using first", item.CalendarId);
-                        }
-                    }
+                    string? eventId = list.Items?.FirstOrDefault()?.Id;
 
                     if (!string.IsNullOrEmpty(eventId))
                     {
-                        // ACTUALIZAR (PATCH)
-                        var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                        var patchReq = new HttpRequestMessage(new HttpMethod("PATCH"), $"calendar/v3/calendars/primary/events/{eventId}")
-                        {
-                            Content = content
-                        };
-                        var patchResp = await client.SendAsync(patchReq);
-                        var patchContent = await patchResp.Content.ReadAsStringAsync();
-
-                        if (!patchResp.IsSuccessStatusCode)
-                        {
-                            throw new InvalidOperationException($"Failed to update event: {patchResp.StatusCode}");
-                        }
-
+                        var patchReq = service.Events.Patch(eventResource, "primary", eventId);
+                        await patchReq.ExecuteAsync();
                         summary.Updated++;
                         _logger.LogInformation("Updated Google event {EventId} for mi-cuatri-id {Id}", eventId, item.CalendarId);
                     }
                     else
                     {
-                        // CREAR (INSERT)
-                        var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                        var insertResp = await client.PostAsync("calendar/v3/calendars/primary/events", content);
-                        var insertContent = await insertResp.Content.ReadAsStringAsync();
-
-                        if (!insertResp.IsSuccessStatusCode)
-                        {
-                            throw new InvalidOperationException($"Failed to create event: {insertResp.StatusCode}");
-                        }
-
+                        var insertReq = service.Events.Insert(eventResource, "primary");
+                        await insertReq.ExecuteAsync();
                         summary.Created++;
                         _logger.LogInformation("Created Google event for mi-cuatri-id {Id}", item.CalendarId);
                     }
@@ -206,61 +222,6 @@ namespace backend.Services
             return bestId;
         }
 
-        /// <summary>
-        /// Ensures a valid access token is available, refreshing if necessary.
-        /// </summary>
-        private async Task<string> EnsureAccessTokenAsync(User user)
-        {
-            var account = user.GoogleAccount ?? throw new InvalidOperationException("No Google account available");
 
-            if (!string.IsNullOrEmpty(account.AccessToken) &&
-                account.AccessTokenExpiry.HasValue &&
-                account.AccessTokenExpiry.Value > DateTime.UtcNow.AddMinutes(1))
-            {
-                return account.AccessToken;
-            }
-
-            if (string.IsNullOrEmpty(account.RefreshToken))
-            {
-                throw new InvalidOperationException("Refresh token is not available for the user.");
-            }
-
-            using var client = new HttpClient();
-            var body = new Dictionary<string, string>
-            {
-                { "client_id", _clientId },
-                { "client_secret", _clientSecret },
-                { "refresh_token", account.RefreshToken },
-                { "grant_type", "refresh_token" }
-            };
-
-            var resp = await client.PostAsync(TokenEndpoint, new FormUrlEncodedContent(body));
-            if (!resp.IsSuccessStatusCode)
-            {
-                var content = await resp.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to refresh Google access token: {Status}", resp.StatusCode);
-                throw new InvalidOperationException("Failed to refresh Google access token");
-            }
-
-            var json = await resp.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            if (!root.TryGetProperty("access_token", out var tokenProp))
-            {
-                _logger.LogError("Token refresh response missing access_token");
-                throw new InvalidOperationException("No access token received from Google");
-            }
-
-            var newAccessToken = tokenProp.GetString();
-            var expiresIn = root.TryGetProperty("expires_in", out var exProp) ? exProp.GetInt32() : 3600;
-
-            account.AccessToken = newAccessToken;
-            account.AccessTokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn);
-
-            await _userRepository.UpsertGoogleAccountAsync(user.Username, account);
-
-            return account.AccessToken;
-        }
     }
 }

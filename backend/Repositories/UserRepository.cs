@@ -15,9 +15,12 @@ namespace backend.Repositories
         /// Initializes a new instance of the UserRepository class and ensures the username index.
         /// </summary>
         /// <param name="context">The MongoDB context.</param>
-        public UserRepository(MongoDbContext context)
+        private readonly backend.Services.ITokenProtector _protector;
+
+        public UserRepository(MongoDbContext context, backend.Services.ITokenProtector protector)
         {
             _context = context;
+            _protector = protector;
 
             // Ensure unique index on Username to avoid duplicates
             var indexKeys = Builders<User>.IndexKeys.Ascending(u => u.Username);
@@ -48,7 +51,13 @@ namespace backend.Repositories
         public async Task<User?> GetByUsernameAsync(string username)
         {
             var filter = Builders<User>.Filter.Eq(u => u.Username, username);
-            return await _context.Users.Find(filter).FirstOrDefaultAsync();
+            var user = await _context.Users.Find(filter).FirstOrDefaultAsync();
+            if (user?.GoogleAccount != null)
+            {
+                user.GoogleAccount.RefreshToken = _protector.Unprotect(user.GoogleAccount.RefreshToken);
+                user.GoogleAccount.AccessToken = _protector.Unprotect(user.GoogleAccount.AccessToken);
+            }
+            return user;
         }
 
         /// <summary>
@@ -57,7 +66,13 @@ namespace backend.Repositories
         public async Task<User?> GetByEmailAsync(string email)
         {
             var filter = Builders<User>.Filter.Eq(u => u.Email, email);
-            return await _context.Users.Find(filter).FirstOrDefaultAsync();
+            var user = await _context.Users.Find(filter).FirstOrDefaultAsync();
+            if (user?.GoogleAccount != null)
+            {
+                user.GoogleAccount.RefreshToken = _protector.Unprotect(user.GoogleAccount.RefreshToken);
+                user.GoogleAccount.AccessToken = _protector.Unprotect(user.GoogleAccount.AccessToken);
+            }
+            return user;
         }
 
         /// <summary>
@@ -65,6 +80,13 @@ namespace backend.Repositories
         /// </summary>
         public Task UpsertGoogleAccountAsync(string username, GoogleAccount account)
         {
+            // Protect tokens before persisting
+            if (account != null)
+            {
+                account.RefreshToken = _protector.Protect(account.RefreshToken);
+                account.AccessToken = _protector.Protect(account.AccessToken);
+            }
+
             var filter = Builders<User>.Filter.Eq(u => u.Username, username);
             var update = Builders<User>.Update.Set(u => u.GoogleAccount, account);
             var options = new UpdateOptions { IsUpsert = false };

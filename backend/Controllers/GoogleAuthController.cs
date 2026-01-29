@@ -3,6 +3,12 @@ using backend.Repositories;
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using Google.Apis.Auth;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Requests;
+using Google.Apis.Auth.OAuth2.Responses;
+using System.Threading;  
 
 namespace backend.Controllers
 {
@@ -57,7 +63,18 @@ namespace backend.Controllers
             // Store session cookie in cache (expires in 10 minutes)
             _sessionCache[stateToken] = (cookie, DateTime.UtcNow.AddMinutes(10));
 
-            var url = $"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={clientId}&redirect_uri={Uri.EscapeDataString(redirect)}&scope={Uri.EscapeDataString(scope)}&access_type=offline&prompt=consent&state={Uri.EscapeDataString(stateToken)}";
+            var requestUrl = new GoogleAuthorizationCodeRequestUrl(new Uri("https://accounts.google.com/o/oauth2/v2/auth"))
+            {
+                ClientId = clientId,
+                RedirectUri = redirect,
+                Scope = scope,
+                AccessType = "offline",
+                Prompt = "consent",
+                ResponseType = "code",
+                State = stateToken
+            };
+
+            var url = requestUrl.Build();
 
             return Ok(new { url, stateToken });
         }
@@ -99,36 +116,31 @@ namespace backend.Controllers
                 return Problem("Missing Google OAuth configuration. Ensure Google__ClientId, Google__ClientSecret and Google__RedirectUri are set.", statusCode: StatusCodes.Status500InternalServerError);
             }
 
-            using var http = new HttpClient();
-            var body = new System.Collections.Generic.Dictionary<string, string>
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
             {
-                { "code", code },
-                { "client_id", clientId },
-                { "client_secret", clientSecret },
-                { "redirect_uri", redirect },
-                { "grant_type", "authorization_code" }
-            };
+                ClientSecrets = new Google.Apis.Auth.OAuth2.ClientSecrets { ClientId = clientId, ClientSecret = clientSecret }
+            });
 
-            var tokenResp = await http.PostAsync("https://oauth2.googleapis.com/token", new System.Net.Http.FormUrlEncodedContent(body));
-            if (!tokenResp.IsSuccessStatusCode)
+            TokenResponse token;
+            try
             {
-                var content = await tokenResp.Content.ReadAsStringAsync();
-                return BadRequest(new { message = "Failed to exchange code for tokens.", details = content });
+                token = await flow.ExchangeCodeForTokenAsync(state, code, redirect, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Failed to exchange code for tokens.", details = ex.Message });
             }
 
-            var tokenJson = await tokenResp.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(tokenJson);
-            var root = doc.RootElement;
-            var accessToken = root.TryGetProperty("access_token", out var atProp) ? atProp.GetString() : null;
+            var accessToken = token.AccessToken;
             if (string.IsNullOrEmpty(accessToken))
             {
-                return BadRequest(new { message = "Failed to get access token from Google.", details = tokenJson });
+                return BadRequest(new { message = "Failed to get access token from Google." });
             }
-            var refreshToken = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() : null;
-            var expiresIn = root.TryGetProperty("expires_in", out var ie) ? ie.GetInt32() : 3600;
+            var refreshToken = token.RefreshToken;
+            var expiresIn = token.ExpiresInSeconds.HasValue ? (int)token.ExpiresInSeconds.Value : 3600;
 
-            // Decode ID token to get user info (sub = user ID, email)
-            var idToken = root.TryGetProperty("id_token", out var itProp) ? itProp.GetString() : null;
+            // Validate ID token using Google library (verifies signature, issuer, expiry and audience)
+            var idToken = token.IdToken;
             string? googleId = null;
             string? googleEmail = null;
 
@@ -136,31 +148,27 @@ namespace backend.Controllers
             {
                 try
                 {
-                    // ID token format: header.payload.signature
-                    var parts = idToken.Split('.');
-                    if (parts.Length == 3)
+                    var settings = new GoogleJsonWebSignature.ValidationSettings
                     {
-                        var payload = parts[1];
-                        // Add padding if needed
-                        var padding = payload.Length % 4;
-                        if (padding > 0) payload += new string('=', 4 - padding);
-                        var decodedBytes = Convert.FromBase64String(payload);
-                        var decodedJson = System.Text.Encoding.UTF8.GetString(decodedBytes);
-                        using var idTokenDoc = JsonDocument.Parse(decodedJson);
-                        var idTokenRoot = idTokenDoc.RootElement;
-                        googleId = idTokenRoot.TryGetProperty("sub", out var subProp) ? subProp.GetString() : null;
-                        googleEmail = idTokenRoot.TryGetProperty("email", out var emailProp) ? emailProp.GetString() : null;
-                    }
+                        Audience = new[] { clientId },
+                        IssuedAtClockTolerance = TimeSpan.FromMinutes(5),
+                        ExpirationTimeClockTolerance = TimeSpan.FromMinutes(5)
+                    };
+
+                    var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+                    googleId = payload.Subject;
+                    googleEmail = payload.Email;
                 }
                 catch (Exception ex)
                 {
-                    return BadRequest(new { message = "Failed to decode ID token.", details = ex.Message });
+                    return BadRequest(new { message = "Failed to validate ID token.", details = ex.Message });
                 }
             }
 
             // Fallback: if no ID token, try userinfo endpoint
             if (string.IsNullOrEmpty(googleEmail) || string.IsNullOrEmpty(googleId))
             {
+                using var http = new HttpClient();
                 var infoReq = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v1/userinfo");
                 infoReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 var infoResp = await http.SendAsync(infoReq);
