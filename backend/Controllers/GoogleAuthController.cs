@@ -8,7 +8,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Requests;
 using Google.Apis.Auth.OAuth2.Responses;
-using System.Threading;  
+using System.Threading;
 
 namespace backend.Controllers
 {
@@ -22,7 +22,7 @@ namespace backend.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IBlackboardService _blackboardService;
         private readonly IConfiguration _configuration;
-        
+
         // Temporary storage for session cookies during OAuth flow (state -> cookie)
         // In production, use distributed cache (Redis) instead of in-memory
         private static readonly Dictionary<string, (string cookie, DateTime expiry)> _sessionCache = new();
@@ -48,9 +48,9 @@ namespace backend.Controllers
         /// <param name="sessionCookieHeader">Optional session cookie extracted from the 'X-Session-Cookie' header; falls back to 'Cookie' header.</param>
         /// <returns>200 OK with the authorization URL and state token, or 400/500 on error.</returns>
         [HttpGet("connect")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(GoogleConnectResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult Connect([FromHeader(Name = "X-Session-Cookie")] string? sessionCookieHeader) 
+        public ActionResult Connect([FromHeader(Name = "X-Session-Cookie")] string? sessionCookieHeader)
         {
             var clientId = _configuration["Google:ClientId"] ?? Environment.GetEnvironmentVariable("Google__ClientId");
             var redirect = _configuration["Google:RedirectUri"] ?? Environment.GetEnvironmentVariable("Google__RedirectUri");
@@ -63,14 +63,14 @@ namespace backend.Controllers
 
             // Get session cookie from header or Cookie
             var cookie = sessionCookieHeader;
-            if (string.IsNullOrEmpty(cookie) && Request.Headers.TryGetValue("Cookie", out var c)) 
+            if (string.IsNullOrEmpty(cookie) && Request.Headers.TryGetValue("Cookie", out var c))
                 cookie = c.ToString();
             if (string.IsNullOrEmpty(cookie))
                 return BadRequest(new { message = "Session cookie is required in 'X-Session-Cookie' or 'Cookie' header." });
 
             // Generate a state token to identify this session
             var stateToken = Guid.NewGuid().ToString();
-            
+
             // Store session cookie in cache (expires in 10 minutes)
             _sessionCache[stateToken] = (cookie, DateTime.UtcNow.AddMinutes(10));
 
@@ -87,7 +87,7 @@ namespace backend.Controllers
 
             var url = requestUrl.Build();
 
-            return Ok(new { url, stateToken });
+            return Ok(new GoogleConnectResponse { Url = url, StateToken = stateToken });
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace backend.Controllers
         [HttpGet("callback")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> Callback([FromQuery] string? code, [FromQuery] string? state) 
+        public async Task<ActionResult> Callback([FromQuery] string? code, [FromQuery] string? state)
         {
             if (string.IsNullOrEmpty(code)) return BadRequest(new { message = "Missing code query parameter." });
             if (string.IsNullOrEmpty(state)) return BadRequest(new { message = "Missing state query parameter." });
